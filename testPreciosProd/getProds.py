@@ -4,33 +4,52 @@ import requests
 import certifi
 import os
 
-sucn3=0
-sucursal = '10-3-'+str(sucn3)
-offset = 0
 
-
-#con urllib3
-#http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
-#r = http.request('GET', url)
-#obj = json.load(r.data)
-
-#con requests
+tipodato = 'productos'
+elementPos = 0
+tipodatoList = {}
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+sucursales = []
 
-while sucn3 <= 99:
+# creo la carpeta
+if not os.path.exists(tipodato):
+    os.makedirs(tipodato)
 
-    if not os.path.exists(sucursal):
-        os.makedirs(sucursal)
+#traigo sucursales
+with open('sucursales/sucursales.json', 'r') as fileSucursales:
+    jsonSucursales = json.load(fileSucursales)
 
-    while offset <= 1000:
-        url = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
-            offset)
-        r2 = requests.get(url, headers=headers).json()
-        filename = sucursal+'/'+sucursal+'_'+str(offset)+'.json'
+    for elemSucursal in jsonSucursales:
+        sucursales.append(jsonSucursales[elemSucursal]['id'])
+
+for sucursal in sucursales:
+
+    filename = tipodato + '/' + sucursal + '.json'
+    offset = 0
+
+    #creo el archivo
+    if os.path.exists(filename):
+        os.remove(filename)
+
+    urlCant = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
+                offset)
+    rTot = requests.get(urlCant, headers=headers).json()
+
+    if isinstance(rTot['total'], int):
+
+        totalElementos = rTot['total']
+
+        while offset <= totalElementos:
+            url = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
+                offset)
+            r2 = requests.get(url, headers=headers).json()
+
+            for element in r2['productos']:
+                tipodatoList[elementPos] = element
+                elementPos = elementPos + 1
+
+            offset = offset + 99
 
         with open(filename, 'w') as outfile:
-            json.dump(r2, outfile)
+            json.dump(tipodatoList, outfile)
 
-        offset = offset+99
-
-    sucn3 = sucn3+1
