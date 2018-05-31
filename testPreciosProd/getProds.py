@@ -36,27 +36,26 @@ for sucursal in sucursales:
     tipodatoList = {}
 
     #creo el archivo
-    if os.path.exists(filename):
-        os.remove(filename)
+    if not os.path.exists(filename):
+        #os.remove(filename)
+        urlCant = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
+                    offset)
+        rTot = requests.get(urlCant, headers=headers).json()
 
-    urlCant = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
-                offset)
-    rTot = requests.get(urlCant, headers=headers).json()
+        if isinstance(rTot['total'], int):
 
-    if isinstance(rTot['total'], int):
+            totalElementos = rTot['total']
 
-        totalElementos = rTot['total']
+            while offset <= totalElementos:
+                url = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
+                    offset)
+                r2 = requests.get(url, headers=headers).json()
 
-        while offset <= totalElementos:
-            url = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
-                offset)
-            r2 = requests.get(url, headers=headers).json()
+                for element in r2['productos']:
+                    tipodatoList[elementPos] = element
+                    elementPos = elementPos + 1
 
-            for element in r2['productos']:
-                tipodatoList[elementPos] = element
-                elementPos = elementPos + 1
-
-            offset = offset + 99
+                offset = offset + 99
 
         with open(filename, 'w') as outfile:
             json.dump(tipodatoList, outfile)
