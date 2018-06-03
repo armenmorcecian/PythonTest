@@ -91,7 +91,7 @@ def getPrecios(sucursales, listaProductosId):
 
 def devolverResultado(lat, lon, listaProductosId):
 
-    sucscandidatas = getSucursalesCerca(lat, lon, 1)
+    sucscandidatas = getSucursalesCerca(lat, lon, 10)
     #print(sucscandidatas)
     listaSucsConProd = getSucsConProds(listaProductosId, sucscandidatas)
     print(getPrecios(listaSucsConProd, listaProductosId))

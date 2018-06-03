@@ -1,7 +1,9 @@
 import json
 import requests
 import os
-from decimal import Decimal
+import logging
+import psycopg2 as pg
+import DBOps
 
 #limites sucursales capital
 #-34.68000, -58.56000
@@ -49,11 +51,14 @@ def importarProductos():
                 while offset <= totalElementos:
                     url = 'https://d3e6htiiul5ek9.cloudfront.net/prod/productos?id_sucursal=' + sucursal + '&limit=100&offset=' + str(
                         offset)
-                    r2 = requests.get(url, headers=headers).json()
+                    try:
+                        r2 = requests.get(url, headers=headers).json()
 
-                    for element in r2['productos']:
-                        tipodatoList[elementPos] = element
-                        elementPos = elementPos + 1
+                        for element in r2['productos']:
+                            tipodatoList[elementPos] = element
+                            elementPos = elementPos + 1
+                    except:
+                        print('error con sucursal:'+sucursal+' offset:'+str(offset))
 
                     offset = offset + 99
 
@@ -62,4 +67,68 @@ def importarProductos():
             print(filename)
 
 
-importarProductos()
+def cargarProdsDB(path):
+
+    PG_CONN_STRING = "host='localhost' dbname='postgres' user='postgres'"
+    data_dir = path
+
+    if os.path.exists(path):
+
+        for file in os.listdir(path):
+            dbconn1 = pg.connect(PG_CONN_STRING)
+            cursor1 = dbconn1.cursor()
+            #print(path+'/'+file)
+            #print(os.path.splitext(file)[0])
+            cursor1.execute("DROP SCHEMA productos CASCADE;")
+            cursor1.execute("CREATE SCHEMA productos;")
+            dbconn1.commit()
+            cursor1.close()
+            dbconn1.close()
+
+
+            if os.path.splitext(file)[1] == '.json':
+
+                with open(path + '/' + file, 'r') as fileProds:
+                    jsonProds = json.load(fileProds)
+                    sucursalNorm = os.path.splitext(file)[0].replace("-", "_")
+                    dbconn = pg.connect(PG_CONN_STRING)
+                    cursor = dbconn.cursor()
+                    DBOps.crearTabla('PRODS_' + sucursalNorm, 'productos')
+
+                    for producto in jsonProds:
+                        #print(jsonProds[producto]['precio'])
+                        #print(jsonProds[producto]['marca'])
+                        #print(jsonProds[producto]['id'])
+                        #print(jsonProds[producto]['nombre'])
+                        #print(jsonProds[producto]['presentacion'])
+                        try:
+                            cursor.execute("INSERT INTO productos.PRODS_" + sucursalNorm + "("
+                                           "precio, "
+                                           "marca, "
+                                           "producto_id, "
+                                           "nombre, "
+                                           "presentacion, "
+                                           "sucursal_id)"
+                                           "VALUES(%s, %s, %s, %s, %s, %s)",
+                                           (
+                                               jsonProds[producto]['precio'],
+                                               jsonProds[producto]['marca'],
+                                               jsonProds[producto]['id'],
+                                               jsonProds[producto]['nombre'],
+                                               jsonProds[producto]['presentacion'],
+                                               os.path.splitext(file)[0]
+                                           )
+                                           )
+                            dbconn.commit()
+                        except:
+                           print('duplicate row sucursal:' + os.path.splitext(file)[0] + ' id:' + jsonProds[producto]['id'])
+
+                    cursor.close()
+                    dbconn.close()
+            else:
+                print('no se puede cargar'+file)
+
+
+
+#importarProductos()
+cargarProdsDB('productos')
